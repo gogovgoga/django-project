@@ -22,6 +22,8 @@ def user_form(request: HttpRequest) -> HttpResponse:
 def handle_file_upload(request: HttpRequest) -> HttpResponse:
     if request.method == "POST" and request.FILES.get("myfile"):
         myfile = request.FILES["myfile"]
+        if myfile.size > 1048576:
+            return HttpResponse("File size exceeds the limit of 1MB.")
         fs = FileSystemStorage()
         filename = fs.save(myfile.name, myfile)
         print("saved file", filename)
