@@ -1,0 +1,18 @@
+{% extends 'shopapp/base.html' %}
+
+{% block title %}
+    Создание заказа
+{% endblock %}
+
+{% block body %}
+    <h1>Создание заказа</h1>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <div class="form-group">
+            <label for="{{ form.products.id_for_label }}">Products:</label>
+            {{ form.products.as_widget }}
+        </div>
+        <button type="submit">Создать заказ</button>
+    </form>
+{% endblock %}
