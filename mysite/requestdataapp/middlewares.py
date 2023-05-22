@@ -36,9 +36,9 @@ class CountRequestMiddleware:
 
 
 class ThrottlingMiddleware:
-    def __init__(self, get_response, requests_per_minute=60):
+    def __init__(self, get_response, requests_per_second=500):
         self.get_response = get_response
-        self.requests_per_minute = requests_per_minute
+        self.requests_per_second = requests_per_second
         self.request_history = {}
 
     def __call__(self, request):
@@ -48,9 +48,9 @@ class ThrottlingMiddleware:
         if ip in self.request_history:
             last_request_time = self.request_history[ip]
             elapsed_time = current_time - last_request_time
-            requests_per_second = 60 / self.requests_per_minute
+            time_per_request = 1 / self.requests_per_second
 
-            if elapsed_time < 1 / requests_per_second:
+            if elapsed_time < time_per_request:
                 error_message = 'Too many requests. Please try again later.'
                 return HttpResponseForbidden(error_message)
 
