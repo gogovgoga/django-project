@@ -2,70 +2,127 @@ from timeit import default_timer
 
 from django.contrib.auth.models import Group
 from django.shortcuts import render, redirect, reverse
-from django.http import HttpResponse, HttpRequest
+from django.http import HttpResponse, HttpRequest, HttpResponseRedirect
+from django.urls import reverse_lazy
+from django.views import View
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 
-from .forms import ProductForm, OrderForm
+from .forms import OrderForm, GroupForm
 from shopapp.models import Product, Order
 
 
-def shop_index(request: HttpRequest):
-    products = Product.objects.all()
-    context = {
-        'time_running': default_timer(),
-        'products': products,
-    }
-    return render(request, 'shopapp/shop-index.html', context=context)
+class ShopIndexView(View):
+    def get(self, request: HttpRequest) -> HttpResponse:
+        products = Product.objects.all()
+        context = {
+            'time_running': default_timer(),
+            'products': products,
+        }
+        return render(request, 'shopapp/shop-index.html', context=context)
 
 
-def groups_list(request: HttpRequest):
-    context = {
-        'groups': Group.objects.prefetch_related('permissions').all(),
-    }
-    return render(request, 'shopapp/groups-list.html', context=context)
+class GroupsListView(View):
+    def get(self, request: HttpRequest) -> HttpResponse:
+        context = {
+            'form': GroupForm(),
+            'groups': Group.objects.prefetch_related('permissions').all(),
+        }
+        return render(request, 'shopapp/groups-list.html', context=context)
 
-
-def products_list(request: HttpRequest):
-    context = {
-        'products': Product.objects.all(),
-    }
-    return render(request, 'shopapp/products-list.html', context=context)
-
-
-def create_product(request: HttpRequest) -> HttpResponse:
-    if request.method == "POST":
-        form = ProductForm(request.POST)
+    def post(self, request: HttpRequest) -> HttpResponse:
+        form = GroupForm(request.POST)
         if form.is_valid():
             form.save()
-            url = reverse("shopapp:products_list")
-            print("Redirect URL:", url)
-            return redirect(url)
-        else:
-            print("Form is not valid:", form.errors)
-    else:
-        form = ProductForm()
-    context = {
-        "form": form,
-    }
-    return render(request, 'shopapp/create-product.html', context=context)
+
+        return redirect(request.path)
 
 
-def orders_list(request: HttpRequest):
-    context = {
-        'orders': Order.objects.select_related("user").prefetch_related('products').all(),
-    }
-    return render(request, 'shopapp/orders-list.html', context=context)
+class ProductDetailsView(DetailView):
+    template_name = 'shopapp/products-details.html'
+    model = Product
+    context_object_name = "product"
 
 
-def create_order(request):
-    if request.method == 'POST':
-        form = OrderForm(request.POST)
-        if form.is_valid():
-            order = form.save()
-            order.user = request.user
-            selected_products = request.POST.getlist('products')
-            order.products.set(selected_products)
-            order.save()
-            return redirect('order_success')
-    else:
-        form = OrderForm()
-    return render(request, 'shopapp/create-order.html', {'form': form})
+class ProductsListView(ListView):
+    template_name = 'shopapp/products-list.html'
+    # model = Product
+    context_object_name = "products"
+    queryset = Product.objects.filter(archived=False)
+
+
+class ProductCreateView(CreateView):
+    model = Product
+    fields = "name", "price", "description", "discount"
+    success_url = reverse_lazy("shopapp:products_list")
+
+
+class ProductUpdateView(UpdateView):
+    model = Product
+    fields = "name", "price", "description", "discount"
+    template_name_suffix = "_update_form"
+
+    def get_success_url(self):
+        return reverse(
+            "shopapp:product_details",
+            kwargs={"pk": self.object.pk},
+        )
+
+
+class ProductDeleteView(DeleteView):
+    model = Product
+    success_url = reverse_lazy("shopapp:products_list")
+
+    def form_valid(self, form):
+        success_url = self.get_success_url()
+        self.object.archived = True
+        self.object.save()
+        return HttpResponseRedirect(success_url)
+
+
+class OrdersListView(ListView):
+    queryset = (
+        Order.objects
+        .select_related("user")
+        .prefetch_related('products')
+    )
+
+
+class OrderDetailView(DetailView):
+    model = Order
+    template_name = 'shopapp/order_detail.html'
+    context_object_name = 'order'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['user'] = self.object.user
+        context['products'] = self.object.products.all()
+        return context
+
+    def get_success_url(self):
+        return reverse_lazy('shopapp:order_list')
+
+
+class OrderCreateView(CreateView):
+    model = Order
+    form_class = OrderForm
+    success_url = reverse_lazy('shopapp:order_list')
+    template_name = 'shopapp/order_create.html'
+
+
+class OrderUpdateView(UpdateView):
+    model = Order
+    fields = "delivery_address", "promo_code", "user", "products"
+    template_name_suffix = "_update_form"
+
+    def get_success_url(self):
+        return reverse(
+            "shopapp:order_detail",
+            kwargs={"pk": self.object.pk},
+        )
+
+
+class OrderDeleteView(DeleteView):
+    model = Order
+    success_url = reverse_lazy('shopapp:order_list')
+    template_name = 'shopapp/order_delete.html'
+    context_object_name = 'order'
