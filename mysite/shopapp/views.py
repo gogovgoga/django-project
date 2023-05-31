@@ -1,6 +1,8 @@
 from timeit import default_timer
 
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.models import Group
+from django.core.exceptions import PermissionDenied
 from django.shortcuts import render, redirect, reverse
 from django.http import HttpResponse, HttpRequest, HttpResponseRedirect
 from django.urls import reverse_lazy
@@ -50,22 +52,36 @@ class ProductsListView(ListView):
     queryset = Product.objects.filter(archived=False)
 
 
-class ProductCreateView(CreateView):
+class ProductCreateView(UserPassesTestMixin, CreateView):
     model = Product
     fields = "name", "price", "description", "discount"
     success_url = reverse_lazy("shopapp:products_list")
 
+    def test_func(self):
+        if self.request.user.is_superuser:
+            return True
+        elif self.request.user.has_perm("shopapp.add_product"):
+            return True
+        else:
+            raise PermissionDenied
 
-class ProductUpdateView(UpdateView):
+    def form_valid(self, form):
+        form.instance.created_by = self.request.user
+        return super().form_valid(form)
+
+
+class ProductUpdateView(UserPassesTestMixin, UpdateView):
     model = Product
     fields = "name", "price", "description", "discount"
     template_name_suffix = "_update_form"
 
     def get_success_url(self):
-        return reverse(
-            "shopapp:product_details",
-            kwargs={"pk": self.object.pk},
-        )
+        return reverse('shopapp:product_details', kwargs={'pk': self.object.pk})
+
+    def test_func(self):
+        product = self.get_object()
+        return self.request.user.is_superuser or (
+                    self.request.user.has_perm('shopapp.change_product') and product.created_by == self.request.user)
 
 
 class ProductDeleteView(DeleteView):
@@ -79,7 +95,7 @@ class ProductDeleteView(DeleteView):
         return HttpResponseRedirect(success_url)
 
 
-class OrdersListView(ListView):
+class OrdersListView(LoginRequiredMixin, ListView):
     queryset = (
         Order.objects
         .select_related("user")
@@ -87,7 +103,8 @@ class OrdersListView(ListView):
     )
 
 
-class OrderDetailView(DetailView):
+class OrderDetailView(PermissionRequiredMixin, DetailView):
+    permission_required = "shopapp:view_order"
     model = Order
     template_name = 'shopapp/order_detail.html'
     context_object_name = 'order'
