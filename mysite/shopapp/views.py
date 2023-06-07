@@ -4,7 +4,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.contrib.auth.models import Group
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import render, redirect, reverse
-from django.http import HttpResponse, HttpRequest, HttpResponseRedirect
+from django.http import HttpResponse, HttpRequest, HttpResponseRedirect, JsonResponse
 from django.urls import reverse_lazy
 from django.views import View
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
@@ -81,7 +81,7 @@ class ProductUpdateView(UserPassesTestMixin, UpdateView):
     def test_func(self):
         product = self.get_object()
         return self.request.user.is_superuser or (
-                    self.request.user.has_perm('shopapp.change_product') and product.created_by == self.request.user)
+                self.request.user.has_perm('shopapp.change_product') and product.created_by == self.request.user)
 
 
 class ProductDeleteView(DeleteView):
@@ -103,20 +103,23 @@ class OrdersListView(LoginRequiredMixin, ListView):
     )
 
 
-class OrderDetailView(PermissionRequiredMixin, DetailView):
-    permission_required = "shopapp:view_order"
+class OrderDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     model = Order
     template_name = 'shopapp/order_detail.html'
     context_object_name = 'order'
+    permission_required = 'shopapp.view_order'
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['user'] = self.object.user
-        context['products'] = self.object.products.all()
-        return context
+    def has_permission(self):
+        return super().has_permission() and self.get_object().user == self.request.user
 
-    def get_success_url(self):
-        return reverse_lazy('shopapp:order_list')
+    # def get_context_data(self, **kwargs):
+    #     context = super().get_context_data(**kwargs)
+    #     context['user'] = self.object.user
+    #     context['products'] = self.object.products.all()
+    #     return context
+    #
+    # def get_success_url(self):
+    #     return reverse_lazy('shopapp:order_list')
 
 
 class OrderCreateView(CreateView):
@@ -143,3 +146,27 @@ class OrderDeleteView(DeleteView):
     success_url = reverse_lazy('shopapp:order_list')
     template_name = 'shopapp/order_delete.html'
     context_object_name = 'order'
+
+
+class OrdersExportView(PermissionRequiredMixin, UserPassesTestMixin, View):
+    permission_required = 'shopapp.view_order'
+
+    def test_func(self):
+        return self.request.user.is_staff
+
+    def get(self, request):
+        if not self.has_permission() or not self.test_func():
+            raise PermissionDenied
+
+        orders = Order.objects.all()
+        orders_data = []
+        for order in orders:
+            order_data = {
+                'order_id': order.id,
+                'address': order.delivery_address,
+                'promo_code': order.promo_code,
+                'user_id': order.user.id,
+                'product_ids': [product.id for product in order.products.all()]
+            }
+            orders_data.append(order_data)
+        return JsonResponse({'orders': orders_data})
