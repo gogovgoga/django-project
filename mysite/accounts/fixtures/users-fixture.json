@@ -1,0 +1,95 @@
+[
+{
+    "model": "auth.user",
+    "pk": 1,
+    "fields": {
+        "password": "pbkdf2_sha256$600000$48HrXP3V0jXYF7V9n5Nruw$ryJp2OdVfBvj/4tzzn2bFF6HXGGnkYGms9HCa8f+xsM=",
+        "last_login": "2023-06-01T14:52:04.061Z",
+        "is_superuser": true,
+        "username": "admin",
+        "first_name": "John",
+        "last_name": "",
+        "email": "",
+        "is_staff": true,
+        "is_active": true,
+        "date_joined": "2023-05-06T18:16:21Z",
+        "user_permissions": [
+            25,
+            26,
+            27,
+            28
+        ]
+    }
+},
+{
+    "model": "auth.user",
+    "pk": 2,
+    "fields": {
+        "password": "pbkdf2_sha256$600000$F96XSNN8am4gQDk2A7VNtU$7ezko8VtpM0GaHJFkpz7ZnFrykqTABiAw8hscTuRTJg=",
+        "last_login": "2023-05-31T09:56:49.016Z",
+        "is_superuser": false,
+        "username": "sam",
+        "first_name": "",
+        "last_name": "",
+        "email": "",
+        "is_staff": true,
+        "is_active": true,
+        "date_joined": "2023-05-27T21:57:01Z",
+        "user_permissions": [
+            4,
+            25,
+            26,
+            28
+        ]
+    }
+},
+{
+    "model": "auth.user",
+    "pk": 3,
+    "fields": {
+        "password": "pbkdf2_sha256$600000$sGIF1P5XyXSSB0HsO1yZSn$wa7vyxNtD5ueG984BOI9PBnDCvStvQU5fImSqPIwUKw=",
+        "last_login": "2023-05-31T10:36:07.143Z",
+        "is_superuser": false,
+        "username": "bob",
+        "first_name": "",
+        "last_name": "",
+        "email": "",
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2023-05-27T22:11:19Z",
+        "user_permissions": [
+            32
+        ]
+    }
+},
+{
+    "model": "auth.user",
+    "pk": 4,
+    "fields": {
+        "password": "pbkdf2_sha256$600000$fx8pNdZBiA1Ar7jh3rtYp5$QjNfr/MhjyJiVFqZhvK8LKgy1ZCSa/ROt4nkV3HLfSM=",
+        "last_login": "2023-05-31T10:40:57.242Z",
+        "is_superuser": false,
+        "username": "nick",
+        "first_name": "",
+        "last_name": "",
+        "email": "",
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2023-05-27T23:23:09Z",
+        "user_permissions": [
+            4,
+            25,
+            26
+        ]
+    }
+},
+{
+    "model": "accounts.profile",
+    "pk": 1,
+    "fields": {
+        "user": 4,
+        "bio": "Hello there!",
+        "agreement_accepted": false
+    }
+}
+]
