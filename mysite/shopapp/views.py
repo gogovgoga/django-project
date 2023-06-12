@@ -9,8 +9,8 @@ from django.urls import reverse_lazy
 from django.views import View
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 
-from .forms import OrderForm, GroupForm
-from shopapp.models import Product, Order
+from .forms import OrderForm, GroupForm, ProductForm
+from shopapp.models import Product, Order, ProductImage
 
 
 class ShopIndexView(View):
@@ -41,7 +41,8 @@ class GroupsListView(View):
 
 class ProductDetailsView(DetailView):
     template_name = 'shopapp/products-details.html'
-    model = Product
+    # model = Product
+    queryset = Product.objects.prefetch_related("images")
     context_object_name = "product"
 
 
@@ -72,8 +73,9 @@ class ProductCreateView(UserPassesTestMixin, CreateView):
 
 class ProductUpdateView(UserPassesTestMixin, UpdateView):
     model = Product
-    fields = "name", "price", "description", "discount", "preview"
+    # fields = "name", "price", "description", "discount", "preview"
     template_name_suffix = "_update_form"
+    form_class = ProductForm
 
     def get_success_url(self):
         return reverse('shopapp:product_details', kwargs={'pk': self.object.pk})
@@ -82,6 +84,15 @@ class ProductUpdateView(UserPassesTestMixin, UpdateView):
         product = self.get_object()
         return self.request.user.is_superuser or (
                 self.request.user.has_perm('shopapp.change_product') and product.created_by == self.request.user)
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        for image in form.files.getlist("images"):
+            ProductImage.objects.create(
+                product=self.object,
+                image=image,
+            )
+        return response
 
 
 class ProductDeleteView(DeleteView):
