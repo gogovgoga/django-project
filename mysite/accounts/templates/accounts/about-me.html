@@ -14,10 +14,23 @@
         <p>Email: {{ user.email }}</p>
         <p>Bio: {{ user.profile.bio }}</p>
 
+        {% if user.profile.avatar %}
+            <img src="{{ user.profile.avatar.url }}" alt="Avatar">
+        {% else %}
+            <p>No avatar available</p>
+        {% endif %}
+
+        <h2>Update Avatar</h2>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Save</button>
+        </form>
+        <br>
         {% if perms.shopapp.add_product %}
             <a href="{% url 'shopapp:product_create' %}">Создать продукт</a>
         {% endif %}
-
+        <br>
     {% else %}
         <h2>User is anonymous</h2>
     {% endif %}
