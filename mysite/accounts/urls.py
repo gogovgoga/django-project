@@ -10,6 +10,9 @@ from accounts.views import (
     AboutMeView,
     RegisterView,
     FooBarView,
+    UserListView,
+    UserDetailView,
+    UserUpdateView,
 )
 
 app_name = 'accounts'
@@ -32,5 +35,9 @@ urlpatterns = [
     path("session/set/", set_session_view, name="session-set"),
     path("session/get/", get_session_view, name="session-get"),
 
-    path("foo-bar/", FooBarView.as_view(), name="foo-bar")
+    path("foo-bar/", FooBarView.as_view(), name="foo-bar"),
+
+    path("users/", UserListView.as_view(), name="user-list"),
+    path("users/<int:pk>/", UserDetailView.as_view(), name="user_detail"),
+    path('update/<int:pk>/', UserUpdateView.as_view(), name='profile_update'),
 ]
