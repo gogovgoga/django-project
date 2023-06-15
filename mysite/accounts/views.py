@@ -1,25 +1,46 @@
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required, permission_required, user_passes_test
 from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.mixins import UserPassesTestMixin, LoginRequiredMixin
+from django.contrib.auth.models import User
 from django.contrib.auth.views import LogoutView
-from django.http import HttpRequest, HttpResponse, JsonResponse
-from django.urls import reverse_lazy
+from django.core.exceptions import ObjectDoesNotExist
+from django.http import HttpRequest, HttpResponse, JsonResponse, HttpResponseForbidden
+from django.shortcuts import redirect, render
+from django.urls import reverse_lazy, reverse
 from django.views import View
-from django.views.generic import TemplateView, CreateView
+from django.views.generic import TemplateView, CreateView, DetailView, UpdateView
 
+from accounts.forms import ProfileForm
 from accounts.models import Profile
 
 
-class AboutMeView(TemplateView):
+class AboutMeView(LoginRequiredMixin, TemplateView):
     template_name = "accounts/about-me.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
-        has_create_product_perm = user.has_perm('shopapp.create_product')
+        try:
+            profile = user.profile
+        except ObjectDoesNotExist:
+            profile = Profile.objects.create(user=user)
+
         context['user'] = user
-        context['has_create_product_perm'] = has_create_product_perm
+        context['profile'] = profile
+
+        if 'form' not in context:
+            context['form'] = ProfileForm(instance=profile)
+
         return context
+
+    def post(self, request, *args, **kwargs):
+        form = ProfileForm(request.POST, request.FILES, instance=request.user.profile)
+        if form.is_valid():
+            form.save()
+            return redirect('accounts:about-me')
+        else:
+            return self.render_to_response(self.get_context_data(form=form))
 
 
 class RegisterView(CreateView):
@@ -72,3 +93,42 @@ def get_session_view(request: HttpRequest) -> HttpResponse:
 class FooBarView(View):
     def get(self, request: HttpRequest) -> JsonResponse:
         return JsonResponse({"foo": "bar", "spam": "eggs"})
+
+
+class UserListView(View):
+    def get(self, request):
+        users = User.objects.all()
+        return render(request, 'accounts/user_list.html', {'users': users})
+
+
+class UserDetailView(UserPassesTestMixin, DetailView):
+    model = User
+    template_name = 'accounts/user_detail.html'
+    context_object_name = 'user'
+
+    def test_func(self):
+        user = self.request.user
+        return user.is_staff or user == self.get_object().profile.user
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['request'] = self.request
+        context['user'] = self.get_object()
+        return context
+
+    def handle_no_permission(self):
+        return HttpResponseForbidden("У вас нет разрешения на просмотр этой страницы.")
+
+
+class UserUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
+    model = Profile
+    template_name = 'accounts/user_update.html'
+    fields = ['avatar', ]
+
+    def get_success_url(self):
+        return reverse('accounts:user_detail', kwargs={'pk': self.object.pk})
+
+    def test_func(self):
+        user = self.request.user
+        profile_user = self.get_object().user
+        return user.is_staff or user == profile_user
